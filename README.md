@@ -1,57 +1,98 @@
-# Supercon Tc Predictor 超导临界温度预测工具
+# Supercon Tc Predictor
 
-AI-powered prediction tool for superconducting critical temperature (Tc) from chemical formula. 基于 21263 条实验数据的超导临界温度智能预测工具。
+**AI-powered prediction of superconducting critical temperature (Tc) from chemical formula.**
+基于 21,263 条真实实验数据的超导临界温度预测工具 — 分布内极准，外推诚实标注。
 
-## 🌐 在线使用（免费试用）
+![predict vs experiment](predict_vs_experiment.png)
 
-**立即使用：https://tcpredict.top**
+## Why this project exists
 
-- 输入化学式（如 YBa2Cu3O7），数秒得到 Tc 预测值
-- 注册即送 10 次免费额度，无需付费即可完整体验
-- 充值套餐灵活（30元/10次起），未用次数随时可退
+Predicting Tc from a chemical formula is hard: synthesis is expensive, and theory-based screening
+doesn't always transfer. This project trains a Random Forest on 21,263 real experimental records
+(from SuperCon and literature) to answer one question fast:
 
-## 📊 模型概况
+> Given a chemical formula, what Tc would experiments likely measure — and **how much should we trust the answer?**
 
-| 项目 | 数值 |
-|------|------|
-| 训练数据 | 21,263 条真实实验数据（含 SuperCon 数据库） |
-| 交叉验证 R² | 0.922 |
-| 支持体系 | 铜基、铁基、氢化物、传统超导体等 |
-| 输出 | 临界温度 Tc（K）+ 置信参考 |
+## Model summary
 
-## 🔬 适用场景
+| Metric | Value |
+|---|---|
+| Training data | 21,263 experimental records (SuperCon + literature) |
+| Algorithm | Random Forest (200 trees) |
+| Cross-validation R² | **0.922** |
+| RMSE | **9.6 K** |
+| Feature space | 81 chemical descriptors (composition statistics: mean / weighted mean / geometric mean / entropy / range / std) |
+| Interface | chemical formula → Tc (K) |
 
-- 材料科研人员：快速筛选候选材料，缩小实验范围
-- 课题组：做初步预判，节省第一性原理计算成本
-- 超导爱好者：探索新材料体系的 Tc 规律
+## Signature cases (real predictions)
 
-## ⚙️ API 用法
+| Formula | Predicted | Experimental | Note |
+|---|---|---|---|
+| HgBa₂Ca₂Cu₃O₈ (Hg-1223) | 126.9 K | ~135 K | within ~6% of the ambient-pressure record holder |
+| YBa₂Cu₃O₇ (YBCO) | 85.5 K | ~92 K | within 7 K |
+| MgB₂ | 35.7 K | 39 K | within 3.3 K |
+| Nb₃Sn | 17.2 K | 18 K | within 1 K |
+| MoN | 7.7 K | 33.4 K (claimed) | **out-of-distribution: honest miss** |
+| LaH₁₀ | 64.1 K | ~250 K (high pressure) | **flagged: extrapolation only, lower-bound reference** |
 
-注册后获取 API Key（X-API-Key 请求头）：
+The last two rows are the point: the model is highly accurate **inside** its training distribution,
+and it **knows** when it is outside it. Instead of overconfident numbers, it emits explicit warnings
+on extrapolation regions (see `boundary_rules.json`).
+
+## Quick start (local)
 
 ```bash
-curl "https://tcpredict.top/api/predict?formula=YBa2Cu3O7" \
-  -H "X-API-Key: YOUR_API_KEY"
+pip install numpy pandas scikit-learn joblib matplotlib
+
+# predict a single formula
+python tc_predictor.py "YBa2Cu3O7"
+python tc_predictor.py "HgBa2Ca2Cu3O8" --detail
 ```
 
-```python
-import requests
-url = "https://tcpredict.top/api/predict"
-r = requests.get(url, params={"formula": "YBa2Cu3O7"},
-                  headers={"X-API-Key": "YOUR_API_KEY"})
-print(r.json()["tc"])
+### Example output
+
+```
+化学式      : HgBa2Ca2Cu3O8
+预测临界温度: 126.9 K (摄氏 -146.2°C)
+判定        : 🟢 高于液氮温度77K, 高温超导潜力
+信任区      : 🔴 red (外推校准)
+家族        : cuprate_Hg
+模型精度    : R2=0.922 RMSE=9.6 K (5折CV)
+⚠️ [B1] 预测>=100K 的输出必须标记 '外推区, 需文献验证'
+⚠️ [B8] 高Tc端统计模型可能系统性低估, 预测应视为下界参考
 ```
 
-## ⚠️ 说明
+## Repository layout
 
-- 预测结果仅供科研参考，不能替代第一性原理计算与实验室验证
-- 数据来源：公开超导数据库（SuperCon 等）与文献实验数据
-- 持续更新中
+```
+├── tc_predictor.py          # main CLI: formula → Tc + boundary warnings
+├── boundary_rules.json      # extrapolation / family / pressure boundary rules
+├── train_model.py           # training pipeline (RandomForest, 5-fold CV)
+├── example.py               # online API usage example
+├── docs/
+│   ├── DATA.md              # dataset description & preprocessing
+│   └── tc-prediction-practice.md  # practical notes from real usage
+└── predict_vs_experiment.png
+```
 
-## 📮 联系
+## Online demo
 
-- 官网：https://tcpredict.top
-- 注册邮箱：382776397@qq.com
+Try it live (free trial, no credit card): **https://tcpredict.top**
+
+- Input a formula (e.g. `YBa2Cu3O7`), get Tc + confidence reference in seconds
+- 10 free credits on registration; unused credits refundable
+
+## Honesty policy
+
+- Predictions are research references only — they do **not** replace first-principles calculations or lab verification.
+- Predictions ≥100 K are always flagged as "extrapolation region, needs literature verification."
+- High-Tc extrapolations are treated as **lower-bound references** (statistical models systematically under-estimate in the high-Tc regime — see Xie et al., npj Comput. Mater. 2022).
+- The model never sorts candidates by raw predicted Tc in the ≥100 K region (known anti-correlation, B4 rule).
+
+## Contact
+
+- Website: https://tcpredict.top
+- Email: 382776397@qq.com
 
 ---
 
