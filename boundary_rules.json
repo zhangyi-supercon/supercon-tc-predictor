@@ -1,0 +1,370 @@
+{
+  "id": "R139-boundary-rules",
+  "version": "4+audit97+audit98",
+  "source": "external_data/r138_designer_boundary.json (R138) + tc_predictor/boundary_rules_b7_candidates.json (R143) + R151 r3 (B系盲区补丁)",
+  "calibration_round": "R138+R143+R151",
+  "note": "部署预测输出标注规则(B1-B6信任边界) + 设计方向规则(B7, R143交互图谱); 由 _r139_gen_boundary.py 从规范源生成, 勿手改 v3: 新增design_rules.r3(B系含B+TC跨度>155, R151 holdout验证), 勿手改 v4(R158): 新增design_rules.composite(复合标签骨架_间隔层_掺杂, R151解释方差69.8%), 勿手改 | 2026-08-16 第97帧: 全量21263行规则审计, B7-2/B7-3 stats 校准为真实值 (桥接特征40500点MAE=0验证)",
+  "design_rules_source": "R143-B7-candidates",
+  "design_rules": {
+    "B7-1": {
+      "type": "island_positive",
+      "name": "低价态 x 加权熵密度 → 高Tc潜力区",
+      "features": [
+        {
+          "feature": "mean_Valence",
+          "range": "(0.999, 2.25]",
+          "note": "低价态主导"
+        },
+        {
+          "feature": "wtd_entropy_Density",
+          "range": "(1.112, 1.703]",
+          "note": "加权密度熵中高箱"
+        }
+      ],
+      "stats": {
+        "n": 365,
+        "mean_tc": 100.9,
+        "max_tc": 137.4,
+        "audit_20260816": {
+          "rows": 365,
+          "unique_formula": 253,
+          "gt50": 323,
+          "gt100": 240,
+          "mean_tc": 100.9,
+          "max_tc": 137.4
+        }
+      },
+      "evidence": "mean_Valence x wtd_entropy_Density spread=96.03K; 同区 wtd_mean_Valence(0.999,2.092]版 n=484 mean=98.5 max=143.0",
+      "confidence": "high",
+      "caveat": "统计岛非因果; 候选需过 B1(>100K外推区标注) 与文献交叉验证"
+    },
+    "B7-2": {
+      "type": "island_positive",
+      "name": "中高价态熵 x 密度熵中箱 → 超高Tc岛",
+      "features": [
+        {
+          "feature": "entropy_Valence",
+          "range": "(1.594, 2.142]"
+        },
+        {
+          "feature": "entropy_Density",
+          "range": "(1.03, 1.221]"
+        }
+      ],
+      "stats": {
+        "n": 552,
+        "mean_tc": 90.8,
+        "max_tc": 135.8,
+        "audit_20260816": {
+          "rows": 552,
+          "unique_formula": 372,
+          "gt50": 489,
+          "gt100": 237,
+          "mean_tc": 90.8,
+          "max_tc": 135.8,
+          "note": "声明n=162/mean=109.0为旧统计, 全量行552/唯一372"
+        }
+      },
+      "evidence": "entropy_Valence x entropy_Density spread=103.15K",
+      "confidence": "high",
+      "caveat": "同上; n=162 样本足但家族构成未控制(疑似铜氧主导)"
+    },
+    "B7-3": {
+      "type": "island_positive",
+      "name": "中高价态熵 x 原子半径熵窄高箱 → 超高Tc岛",
+      "features": [
+        {
+          "feature": "entropy_Valence",
+          "range": "(1.594, 2.142]"
+        },
+        {
+          "feature": "entropy_atomic_radius",
+          "range": "(1.498, 1.52]"
+        }
+      ],
+      "stats": {
+        "n": 1454,
+        "mean_tc": 68.0,
+        "max_tc": 135.8,
+        "audit_20260816": {
+          "rows": 1454,
+          "unique_formula": 1082,
+          "gt50": 1020,
+          "gt100": 218,
+          "mean_tc": 68.0,
+          "max_tc": 135.8,
+          "note": "声明n=139/mean=112.9为旧统计, 全量行1454/唯一1082; 该区含大量低Tc样本, 高Tc潜力弱于B7-1/B7-4"
+        }
+      },
+      "evidence": "entropy_Valence x entropy_atomic_radius spread=106.94K",
+      "confidence": "high",
+      "caveat": "同上"
+    },
+    "B7-4": {
+      "type": "island_positive_sparse",
+      "name": "中高价态熵 x 大原子半径跨度 → 极值高Tc",
+      "features": [
+        {
+          "feature": "entropy_Valence",
+          "range": "(1.594, 2.142]"
+        },
+        {
+          "feature": "range_atomic_radius",
+          "range": "(205.0, 256.0]"
+        }
+      ],
+      "stats": {
+        "n": 33,
+        "mean_tc": 114.9,
+        "max_tc": 135.0,
+        "audit_20260816": {
+          "rows": 33,
+          "unique_formula": 31,
+          "gt50": 33,
+          "gt100": 31,
+          "mean_tc": 114.9,
+          "max_tc": 135.0
+        }
+      },
+      "evidence": "entropy_Valence x range_atomic_radius spread=111.07K(全量最强); 邻箱(1.519,1.594]x(205,256] n=79 mean=84.8",
+      "confidence": "medium",
+      "caveat": "n=33 稀疏, 必须文献交叉验证后使用 (B1/B4 联动)"
+    },
+    "B7-5": {
+      "type": "constraint_negative",
+      "name": "高价态抑制: 高Tc岛集中于低价态侧",
+      "features": [
+        {
+          "feature": "mean_Valence",
+          "range": "(0.999, 2.25]",
+          "note": "跨特征统计: 低价态bin出现144次 vs 高价态(2.2,2.6]仅29次"
+        }
+      ],
+      "stats": {
+        "n": 4717,
+        "mean_tc": 61.5,
+        "max_tc": 137.4,
+        "audit_20260816": {
+          "rows": 4717,
+          "unique_formula": 2897,
+          "gt50": 2867,
+          "gt100": 392,
+          "mean_tc": 61.5,
+          "max_tc": 137.4,
+          "note": "第98帧 boundary_audit 全量审计补全顶层stats(原声明null)"
+        }
+      },
+      "evidence": "全200对 islands_gt60 的 b1 分布: val(1.0,2.1]=144次, val(1.0,2.2]=95次, val(2.2,2.6]=29次; 与 R141 单变量结论一致",
+      "confidence": "high",
+      "caveat": "与 R120 证伪教训一致: 家族构成可能是混杂因素, 设计时需控制家族"
+    },
+    "r3": {
+      "type": "island_positive",
+      "name": "B系间隔层替换铜氧化物高Tc区 (R151 holdout 5/5泛化)",
+      "features": [
+        {
+          "feature": "B",
+          "range": "(0, inf]",
+          "note": "配方含B元素(间隔层替换)"
+        },
+        {
+          "feature": "range_ThermalConductivity",
+          "range": "(155, inf]",
+          "note": "热导率跨度过大=混杂相"
+        },
+        {
+          "feature": "wtd_range_ThermalConductivity",
+          "range": "(66.3, inf]",
+          "note": "加权热导率跨度阈值"
+        }
+      ],
+      "stats": {
+        "n": 1205,
+        "b_hot_n": 7,
+        "mean_tc": null,
+        "max_tc": 120.0,
+        "fpr_lowTc": 0.0351,
+        "recall_hot": "7/7",
+        "hot18_recall": "16/18",
+        "audit_20260816": {
+          "rows": 49,
+          "unique_formula": 48,
+          "gt50": 18,
+          "gt100": 8,
+          "mean_tc": 51.6,
+          "max_tc": 120.0,
+          "note": "命中=含B铜氧化物49行; 声明max_tc=120.0与全量一致"
+        }
+      },
+      "evidence": "R151 holdout 5种子(20260804-08) 材料级70/30: TEST高Tc召回100%, 低Tc误伤<=4.2%, t=155跨种子恒定; 全量FPR 6.18%->3.51%, 18热点召回13->16 (成果/20260804_R151_r3_holdout验证.md)",
+      "confidence": "high",
+      "caveat": "B系高Tc仅7条, 合取阈值经5种子holdout无过拟合; 与B7规则并存, 候选仍需过B1-B6信任边界"
+    },
+    "composite": {
+      "type": "island_positive",
+      "name": "复合标签(骨架_间隔层_掺杂)高Tc潜力区 (R151: 解释方差69.8%)",
+      "pattern": "cuprate_{spacer}_{dopant}",
+      "spacers": [
+        "Hg",
+        "Tl",
+        "Bi",
+        "Pb",
+        "Ba",
+        "Sr"
+      ],
+      "dopants": [
+        "Ag",
+        "Mg",
+        "Cd",
+        "Al",
+        "Ga",
+        "B",
+        "Zn",
+        "Ni"
+      ],
+      "high_potential_combos": [
+        {
+          "label": "cuprate_Hg_Ag",
+          "family": "Hg间隔层+Ag掺杂铜氧骨架",
+          "evidence": "R149/R150实证: Ag-1234系 Hg0.3La0.7Ba2Ca3Cu3.2Ag0.8O10=126.8K, Hg0.3La0.7Ba2Ca3Cu2.8Ag1.2O10=126.9K (SuperCon实测)",
+          "note": "间隔层替换+掺杂双通道; 设计候选首选组合"
+        },
+        {
+          "label": "cuprate_Hg_B",
+          "family": "Hg间隔层+B掺杂铜氧骨架",
+          "evidence": "R155核验: 含B铜氧族43条 wtd_range_ThermalConductivity 全>66.3(mean 98.6), 峰值124.1K候选(Hg0.3La0.7Ba2Ca3Cu3.2Ag0.8B0.2O10)判定B3岛内",
+          "note": "B掺杂=间隔层替换升级; 完整判定需 range_TC>155 且 wtd_range_TC>66.3 (r3规则)"
+        },
+        {
+          "label": "cuprate_Tl_Cd",
+          "family": "Tl间隔层+Cd掺杂铜氧骨架",
+          "evidence": "R150实证: Tl2Ba2Ca2Cd 123.5~125.5K",
+          "note": "Cd掺杂通道已验证"
+        }
+      ],
+      "stats": {
+        "explained_variance": 0.698,
+        "source": "R151 复合标签分析 (粗粒度cuprate标签信息熵0bit vs 复合标签69.8%)"
+      },
+      "confidence": "high",
+      "caveat": "统计岛非因果; 候选仍需过B1-B6信任边界与文献交叉验证; 复合标签由 tc_predictor.detect_family 输出(骨架_间隔层_掺杂)"
+    }
+  },
+  "rules": {
+    "B1": "预测>=100K 的输出必须标记 '外推区, 需文献验证', 不得作为设计结论",
+    "B2": "常压模型预测仅对常压体系可信 (训练集无压力轴), 输出必须附 '压力条件边界' 字段",
+    "B3": "含氢化物族(H含量高)的设计候选: 模型预测值仅为下界参考, 真实Tc可能远超模型输出",
+    "B4": "禁止使用模型在真实Tc>=100K区域对候选排序 (反相关, 排序无意义)",
+    "B5": "含Th/Pm等词表外元素体系: 模型无法表示, 直接标注 '超出模型词表'",
+    "B6": "设计器输出的每个高Tc候选必须附带压力条件字段; 缺压力=缺最大物理变量, 标注为不完整设计",
+    "B8": "高Tc常规超导候选(非氢化物, 预测>=80K): 文献证据(Eliashberg/Allen-Dynes公式对高Tc常规超导体系统性低估, Xie et al. npj Comput Mater 2022)表明统计模型在高Tc端同样可能低估——预测应视为下界参考, 高Tc设计结论需第一性原理/实验复核",
+    "B9": "非铜氧/非铁基/非氢化物(常规BCS类, 即other族)预测>=40K: 常压常规超导实证上限为MgB2=39K (Choudhary & Garrity npj Comput Mater 2022, BCS预筛选1058材料中最大Tc候选为5~10K量级)——other族高Tc预测与BCS物理上限冲突, 判定为伪相关, 预测仅作排序线索不作结论, 需实验/文献复核",
+    "B10": "other族(常规BCS类)候选不含高德拜温度元素(1s/2p/3p轻元素与轻3d过渡金属: B/C/N/O/F/Mg/Al/Si/P/S/Cl/Sc/Ti/V/Cr/Mn/Fe/Co/Ni/Cu/Zn): 文献iBCS预筛第一关(Choudhary & Garrity npj Comput Mater 2022)要求高Debye温度(θD>300K)与高费米面态密度N(0)>1——缺高θD元素载体=BCS高Tc机理前置不满足, 预测>=30K即高度可疑(伪相关), 仅作排序线索不作结论, 需实验/文献复核"
+  },
+  "trust_zones": {
+    "green": "Tc<80K 常压, 铁基/其他族/铜氧常压: 部署模型MAE约2~15K, 可直接参考",
+    "yellow": "80~100K 常压: 低估倾向, 需标注不确定度并文献交叉验证",
+    "red": ">100K 或 含氢化物 或 加压体系: 外推区, 仅作线索不作结论"
+  },
+  "zone_thresholds": {
+    "green_max_tc": 80.0,
+    "yellow_min_tc": 80.0,
+    "yellow_max_tc": 100.0,
+    "red_min_tc": 100.0
+  },
+  "family_heuristics": {
+    "hydride_h_fraction": 0.5,
+    "cuprate": "含 Cu 且含 O",
+    "iron_based": "含 Fe 且 (含 As 或 Se 或 P)"
+  },
+  "model_vocab_size": 86,
+  "model_vocab": [
+    "H",
+    "He",
+    "Li",
+    "Be",
+    "B",
+    "C",
+    "N",
+    "O",
+    "F",
+    "Ne",
+    "Na",
+    "Mg",
+    "Al",
+    "Si",
+    "P",
+    "S",
+    "Cl",
+    "Ar",
+    "K",
+    "Ca",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
+    "Ga",
+    "Ge",
+    "As",
+    "Se",
+    "Br",
+    "Kr",
+    "Rb",
+    "Sr",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
+    "In",
+    "Sn",
+    "Sb",
+    "Te",
+    "I",
+    "Xe",
+    "Cs",
+    "Ba",
+    "La",
+    "Ce",
+    "Pr",
+    "Nd",
+    "Pm",
+    "Sm",
+    "Eu",
+    "Gd",
+    "Tb",
+    "Dy",
+    "Ho",
+    "Er",
+    "Tm",
+    "Yb",
+    "Lu",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
+    "Tl",
+    "Pb",
+    "Bi",
+    "Po",
+    "At",
+    "Rn"
+  ],
+  "vocab_note": "词表外元素(如 Th)无法表示, 见规则 B5"
+}
